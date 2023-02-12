@@ -7,22 +7,19 @@
    1. Letak PTT_CTRL
    2. Letak LED_PTT indicator
    3. TX_delay tu, saya panjangkan
+   4. NANO ada QRM bila guna koding ini
+   5. UNO okay, tiada QRM
 
   de 9W2KEY 73                
  */
  
-// #include "dht.h" // royat nak pakai DHT
-// #define dht_apin A5 // cocoh DHT di Analog Pin A5
- 
-// dht DHT; // running DHT
-
 #include <math.h>
 #include <stdio.h>
 
 // Defines the Square Wave Output Pin
-#define OUT_PIN 2 // audio out pin
-int PTT_CTRL= 3; // pin ctrl relay utk ctrl ptt handy bopeng UV-5R 
-int LED_PTT= 4; // LED PTT indicator
+#define OUT_PIN 2       // audio out pin
+int PTT_CTRL = 3;       // pin ctrl relay utk ctrl ptt handy bopeng UV-5R 
+int LED_PTT = 13;       // LED PTT indicator
 
 #define _1200   114:22:04.931 -> TX Preamble:  350
 #define _2400   0
@@ -30,6 +27,7 @@ int LED_PTT= 4; // LED PTT indicator
 #define _FLAG       0x7e
 #define _CTRL_ID    0x03
 #define _PID        0xf0
+
 #define _DT_EXP     ','
 #define _DT_STATUS  '>'
 #define _DT_POS     '!'
@@ -86,21 +84,24 @@ unsigned int tc2400 = (unsigned int)(0.5 * adj_2400 * 1000000.0 / 2400.0);
 const char *mycall = "9W2KEY"; // change to your own callsign
 char myssid = 1;
 
-const char *dest = "APRS";
+//const char *dest = "APRS";
+const char *dest = "APZKY1";        // Destination address APZxxx Experimental http://www.aprs.org/aprs11/tocalls.txt
 const char *dest_beacon = "BEACON";
 
 const char *digi = "WIDE2";
 char digissid = 1;
 
-const char *mystatus = "Hello World, This is a simple Arduino APRS Transmitter !";
+const char *mystatus = " Experimental APRS Arduino (UNO) ..:|Static station|:.. "; // 55 askara
+const char *mystatus1 = " www.github.com/mzakiab "; // 24 askara
 
-const char *lat = "0557.57N"; // change to your own location
-const char *lon = "10219.59E"; // change to your own location
-const char sym_ovl = 'H';
-const char sym_tab = 'a';
+//QTH Pauh Butuk
+const char *lat = "0557.94N";     // change to your own location
+const char *lon = "10220.33E";    // change to your own location
+const char sym_ovl = 'Y';
+const char sym_tab = 'h';         // List symbols at http://www.aprs.org/symbols.html
 
-// unsigned int tx_delay = 5000; // setting asal
-unsigned int tx_delay = 288000000;
+unsigned int tx_delay = 5000;     // setting asal
+// unsigned int tx_delay = 288000000;
 unsigned int str_len = 400;
 
 char bit_stuff = 0;
@@ -315,7 +316,8 @@ void send_payload(char type)
   else if(type == _STATUS)
   {
     send_char_NRZI(_DT_STATUS, HIGH);
-    send_string_len(mystatus, strlen(mystatus));
+   // send_string_len(mystatus, strlen(mystatus));
+    send_string_len(mystatus1, strlen(mystatus1));
   }
   else if(type == _FIXPOS_STATUS)
   {
@@ -327,6 +329,7 @@ void send_payload(char type)
 
     send_char_NRZI(' ', HIGH);
     send_string_len(mystatus, strlen(mystatus));
+    // send_string_len(mystatus1, strlen(mystatus1));
   }
 }
 
@@ -393,13 +396,13 @@ void send_flag(unsigned char flag_len)
  */
 void send_packet(char packet_type, char dest_type)
 {
-//print_debug(packet_type, dest_type); // asal dia duk atas, nak try letak bawah dan letak delay 1 second
-//digitalWrite(LED_BUILTIN, 1); // asal comand ini duk atas sekali
-  digitalWrite(PTT_CTRL, 1); // ON Relay PTT
-  digitalWrite(LED_PTT, 1); // ON LED PTT
-  digitalWrite(LED_BUILTIN, 1); // nak cuba letak bawah pulak
-  delay(1000); // tunggu metar 1 saat
-  print_debug(packet_type, dest_type); // tujuannya nak suruh PTT ON dulu 1 saat lepas tu baru audio
+//print_debug(packet_type, dest_type);    // asal dia duk atas, nak try letak bawah dan letak delay 1 second
+//digitalWrite(LED_BUILTIN, 1);           // asal comand ini duk atas sekali
+  digitalWrite(PTT_CTRL, 1);              // ON Relay PTT
+  digitalWrite(LED_PTT, 1);               // ON LED PTT
+  digitalWrite(LED_BUILTIN, 1);           // nak cuba letak bawah pulak
+  delay(1000);                            // tunggu metar, 1 saat je. tujuannya nak suruh PTT ON dulu baru audio tubik
+  print_debug(packet_type, dest_type);    // audio baru tubik
 
   /*
    * AX25 FRAME
@@ -423,9 +426,11 @@ void send_packet(char packet_type, char dest_type)
   send_crc();
   send_flag(3);
 
-  digitalWrite(LED_BUILTIN, 0);
-  digitalWrite(LED_PTT, 0); // OFF LED PTT
-  digitalWrite(PTT_CTRL, 0); // OFF Relay PTT
+  delay(500);                     // Tunggu sebentar sebelum lepas PTT, nak suruh audio habis tubik dulu
+
+  digitalWrite(LED_BUILTIN, 0);   // OFF built in LED
+  digitalWrite(LED_PTT, 0);       // OFF LED PTT
+  digitalWrite(PTT_CTRL, 0);      // OFF Relay PTT
 }
 
 /*
@@ -434,7 +439,7 @@ void send_packet(char packet_type, char dest_type)
  */
 void randomize(unsigned int &var, unsigned int low, unsigned int high)
 {
-  var = random(low, high);
+    var = random(low, high);
 }
 
 /*
@@ -444,7 +449,7 @@ void set_io(void)
 {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(OUT_PIN, OUTPUT);
-
+ 
   Serial.begin(115200);
 }
 
@@ -468,7 +473,7 @@ void print_debug(char type, char dest_type)
    * 
    * MYCALL-N>APRS,DIGIn-N:<PAYLOAD STRING> <CR><LF>
    */
-
+  
   /****** MYCALL ********/
   Serial.print(mycall);
   Serial.print('-');
@@ -504,7 +509,8 @@ void print_debug(char type, char dest_type)
   else if(type == _STATUS)
   {
     Serial.print(_DT_STATUS);
-    Serial.print(mystatus);
+    // Serial.print(mystatus);
+    Serial.print(mystatus1);
   }
   else if(type == _FIXPOS_STATUS)
   {
@@ -516,9 +522,11 @@ void print_debug(char type, char dest_type)
 
     Serial.print(' ');
     Serial.print(mystatus);
+   // Serial.print(mystatus1);
   }
   
   Serial.println(' ');
+ 
 }
 
 /*
@@ -526,24 +534,19 @@ void print_debug(char type, char dest_type)
  */
 void setup()
 {
-  // delay(500); // bu v system nyawo metar
-  // Serial.println("9W2KEY Station: Humidity & Temperature Sensor\n\n");
-  // delay(1000); lex metar nak access sensor
-  pinMode(PTT_CTRL, OUTPUT); // PIN output mode
-  pinMode(LED_PTT, OUTPUT); // PIN output mode
+  pinMode(PTT_CTRL, OUTPUT);    // PIN output mode
+  pinMode(LED_PTT, OUTPUT);     // PIN output mode
   set_io();
   print_code_version();
 }
 
 void loop()
 {
-  // DHT.read11(dht_apin);
-  
   send_packet(random(1,4), random(1,3));
   
   delay(tx_delay);
-  // randomize(tx_delay, 10, 5000); // setting asal 
-  randomize(tx_delay, 200000000, 288000000); // random TX 15 - 30 minit sekali
+  randomize(tx_delay, 10, 5000); // setting asal 
+  // randomize(tx_delay, 200000000, 288000000); // random TX 15 - 30 minit sekali
   randomize(str_len, 10, 420);
-  delay(600000); // tunggu 10 minit sebelum TX data baru
+  delay(300000); // tunggu 5 minit sebelum TX data baru
 }
